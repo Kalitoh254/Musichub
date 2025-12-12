@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.json">
 </head>
+
 <body>
 <!-- Splash Screen -->
 <div id="splashScreen" class="splash-screen">
@@ -18,7 +19,6 @@
 
 <!-- Main Content -->
 <div id="mainContent" class="main-content">
-    <!-- Header -->
     <header>
         <img src="icons/logo.png" alt="Logo" class="logo">
         <h1>MusicHub</h1>
@@ -26,38 +26,36 @@
         <input type="text" id="search" placeholder="Search songs...">
     </header>
 
-    <!-- Music Library -->
     <main>
         <audio id="audioPlayer" controls></audio>
+
         <div class="songs-container">
             <h2>Music Library (<span id="songCount">0</span>)</h2>
             <ul id="songList"></ul>
         </div>
 
-        <!-- About Section -->
         <section class="about">
             <h2>About MegaFlow Music Inc.</h2>
-            <p>MegaFlow Music Inc. is a premier recording label featuring our artists under <strong>MS Records</strong>. We host a diverse catalogue spanning multiple genres, bringing you top-quality music from talented artists worldwide.</p>
-            <p>Explore our catalogue and discover new hits from our roster of musicians.</p>
+            <p>MegaFlow Music Inc. is a premier recording label featuring artists under <strong>MS Records</strong>. Explore our diverse catalogue and discover new hits.</p>
         </section>
     </main>
 
-    <!-- Footer -->
     <footer>
         <p>&copy; 2025 MegaFlow Music Inc. All Rights Reserved.</p>
     </footer>
 
-    <!-- Home Icon -->
     <div id="homeIcon" class="home-icon">🏠</div>
 </div>
 
 <script src="app.js"></script>
+
 <script>
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js')
         .then(() => console.log("Service Worker registered"))
-        .catch(err => console.error("Service Worker failed:", err));
+        .catch(err => console.error("SW failed:", err));
 }
 </script>
+
 </body>
 </html>
