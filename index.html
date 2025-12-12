@@ -1,33 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MusicHub Player</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MusicHub - MegaFlow Music Inc.</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
 </head>
 <body>
+<!-- Splash Screen -->
+<div id="splashScreen" class="splash-screen">
+    <img src="icons/logo.png" alt="MusicHub Logo" class="splash-logo">
+    <h1>Welcome to MusicHub</h1>
+    <p>Powered by MegaFlow Music Inc.</p>
+    <button id="closeSplash">Enter MusicHub</button>
+</div>
+
+<!-- Main Content -->
+<div id="mainContent" class="main-content">
+    <!-- Header -->
     <header>
-        <h1>MusicHub — Offline Player</h1>
+        <img src="icons/logo.png" alt="Logo" class="logo">
+        <h1>MusicHub</h1>
+        <p class="tagline">Powered by MegaFlow Music Inc.</p>
+        <input type="text" id="search" placeholder="Search songs...">
     </header>
 
+    <!-- Music Library -->
     <main>
         <audio id="audioPlayer" controls></audio>
-
         <div class="songs-container">
-            <h2>Music Library</h2>
+            <h2>Music Library (<span id="songCount">0</span>)</h2>
             <ul id="songList"></ul>
         </div>
+
+        <!-- About Section -->
+        <section class="about">
+            <h2>About MegaFlow Music Inc.</h2>
+            <p>MegaFlow Music Inc. is a premier recording label featuring our artists under <strong>MS Records</strong>. We host a diverse catalogue spanning multiple genres, bringing you top-quality music from talented artists worldwide.</p>
+            <p>Explore our catalogue and discover new hits from our roster of musicians.</p>
+        </section>
     </main>
 
-    <script src="app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js')
-                .then(() => console.log("Service Worker registered"))
-                .catch(err => console.error("Service Worker failed:", err));
-        }
-    </script>
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 MegaFlow Music Inc. All Rights Reserved.</p>
+    </footer>
+
+    <!-- Home Icon -->
+    <div id="homeIcon" class="home-icon">🏠</div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log("Service Worker registered"))
+        .catch(err => console.error("Service Worker failed:", err));
+}
+</script>
 </body>
 </html>
