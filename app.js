@@ -8,10 +8,49 @@ document.addEventListener("DOMContentLoaded", () => {
     const search = document.getElementById("search");
     const count = document.getElementById("songCount");
 
-    let currentIndex = 0;
     let songs = [];
+    let currentSongIndex = -1;
+    let playRequest = 0;
+    const statsByName = new Map();
 
-    // Splash controls
+    function loadStats(name) {
+        if (statsByName.has(name)) return statsByName.get(name);
+
+        const defaults = { plays: 0, likes: 0, reaction: "" };
+        try {
+            const saved = JSON.parse(localStorage.getItem("musichub:" + name) || "null");
+            if (saved && typeof saved === "object") {
+                defaults.plays = Number.isSafeInteger(saved.plays) && saved.plays >= 0 ? saved.plays : 0;
+                defaults.likes = Number.isSafeInteger(saved.likes) && saved.likes >= 0 ? saved.likes : 0;
+                defaults.reaction = ["🔥", "😍", "😂"].includes(saved.reaction) ? saved.reaction : "";
+            }
+        } catch (error) {
+            console.warn("Ignoring invalid saved stats for", name, error);
+        }
+        statsByName.set(name, defaults);
+        return defaults;
+    }
+
+    function saveStats(name, stats) {
+        try {
+            localStorage.setItem("musichub:" + name, JSON.stringify(stats));
+        } catch (error) {
+            console.warn("Could not save stats for", name, error);
+        }
+    }
+
+    function showMessage(message) {
+        let status = document.getElementById("playerStatus");
+        if (!status) {
+            status = document.createElement("p");
+            status.id = "playerStatus";
+            status.setAttribute("role", "status");
+            status.setAttribute("aria-live", "polite");
+            audio.insertAdjacentElement("afterend", status);
+        }
+        status.textContent = message;
+    }
+
     closeSplash.addEventListener("click", () => {
         splash.style.display = "none";
         main.style.display = "block";
@@ -22,30 +61,53 @@ document.addEventListener("DOMContentLoaded", () => {
         main.style.display = "none";
     });
 
-    // Load songs
-    fetch("songs.json")
-        .then(res => res.json())
-        .then(data => {
-            songs = data.map(name => ({
-                name: name.replace(".mp3",""),
-                path: "mshub/" + name
-            }));
-            renderSongs();
-        })
-        .catch(err => {
-            console.error(err);
-            list.innerHTML = "<li>Error loading songs.</li>";
-        });
+    async function playSong(index) {
+        if (index < 0 || index >= songs.length) return;
 
-    // Render Song List
+        const requestId = ++playRequest;
+        const song = songs[index];
+        currentSongIndex = index;
+        audio.src = song.path;
+        showMessage("Loading: " + song.name);
+
+        try {
+            await audio.play();
+            if (requestId !== playRequest) return;
+
+            const stats = loadStats(song.file);
+            stats.plays += 1;
+            saveStats(song.file, stats);
+            updateSongStats(song.file);
+            showMessage("Now playing: " + song.name);
+        } catch (error) {
+            if (requestId !== playRequest) return;
+            showMessage("Could not play " + song.name + ". Check the file or tap Play again.");
+            console.error("Playback failed:", song.name, error);
+        }
+    }
+
+    function updateSongStats(file) {
+        const stats = loadStats(file);
+        const row = [...list.querySelectorAll(".song-item")].find(
+            item => item.dataset.file === file
+        );
+        if (!row) return;
+        row.querySelector(".like-button").textContent = `❤️ ${stats.likes}`;
+        row.querySelector(".play-count").textContent = `Plays: ${stats.plays}`;
+        row.querySelector(".reaction-output").textContent = stats.reaction;
+    }
+
     function renderSongs(filter = "") {
-        list.innerHTML = "";
-        const filtered = songs.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
+        list.replaceChildren();
+        const query = filter.trim().toLocaleLowerCase();
+        const filtered = songs.filter(song => song.name.toLocaleLowerCase().includes(query));
         count.textContent = filtered.length;
 
-        filtered.forEach((song, index) => {
+        filtered.forEach(song => {
+            const stats = loadStats(song.file);
             const li = document.createElement("li");
             li.className = "song-item";
+            li.dataset.file = song.file;
 
             const nameSpan = document.createElement("span");
             nameSpan.className = "song-name";
@@ -54,43 +116,37 @@ document.addEventListener("DOMContentLoaded", () => {
             const actions = document.createElement("span");
             actions.className = "song-actions";
 
-            // PLAY BUTTON
             const playBtn = document.createElement("button");
             playBtn.textContent = "Play";
+            playBtn.type = "button";
+            playBtn.addEventListener("click", () => playSong(songs.indexOf(song)));
 
-            // DOWNLOAD BUTTON
             const downloadBtn = document.createElement("button");
             downloadBtn.textContent = "Download";
-            downloadBtn.onclick = () => {
-                const a = document.createElement("a");
-                a.href = song.path;
-                a.download = song.name;
-                a.click();
-            };
+            downloadBtn.type = "button";
+            downloadBtn.addEventListener("click", () => {
+                const link = document.createElement("a");
+                link.href = song.path;
+                link.download = song.file;
+                link.click();
+            });
 
-            // ─────────── SONG STATS ───────────
-
-            let stats = JSON.parse(localStorage.getItem(song.name)) || {
-                plays: 0,
-                likes: 0,
-                reaction: ""
-            };
-
-            // LIKE BUTTON
             const likeBtn = document.createElement("button");
+            likeBtn.className = "like-button";
+            likeBtn.type = "button";
             likeBtn.textContent = `❤️ ${stats.likes}`;
-            likeBtn.onclick = () => {
-                stats.likes++;
+            likeBtn.addEventListener("click", () => {
+                stats.likes += 1;
+                saveStats(song.file, stats);
                 likeBtn.textContent = `❤️ ${stats.likes}`;
-                localStorage.setItem(song.name, JSON.stringify(stats));
-            };
+            });
 
-            // PLAY COUNT UI
+            actions.append(playBtn, downloadBtn, likeBtn);
+
             const playCount = document.createElement("span");
             playCount.className = "play-count";
             playCount.textContent = `Plays: ${stats.plays}`;
 
-            // REACTIONS
             const reactionBox = document.createElement("div");
             reactionBox.className = "reactions";
 
@@ -99,50 +155,113 @@ document.addEventListener("DOMContentLoaded", () => {
             reactionOutput.textContent = stats.reaction;
 
             ["🔥", "😍", "😂"].forEach(emoji => {
-                const r = document.createElement("button");
-                r.textContent = emoji;
-                r.onclick = () => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = emoji;
+                button.setAttribute("aria-label", "React " + emoji + " to " + song.name);
+                button.addEventListener("click", () => {
                     stats.reaction = emoji;
                     reactionOutput.textContent = emoji;
-                    localStorage.setItem(song.name, JSON.stringify(stats));
-                };
-                reactionBox.appendChild(r);
+                    saveStats(song.file, stats);
+                });
+                reactionBox.appendChild(button);
             });
 
-            // PLAY BUTTON - WITH PLAY COUNTER UPDATE
-            playBtn.onclick = () => {
-                currentIndex = index;
-                audio.src = song.path;
-                audio.play();
-
-                stats.plays++;
-                playCount.textContent = `Plays: ${stats.plays}`;
-                localStorage.setItem(song.name, JSON.stringify(stats));
-            };
-
-            // Append UI elements
-            actions.appendChild(playBtn);
-            actions.appendChild(downloadBtn);
-            actions.appendChild(likeBtn);
-
-            li.appendChild(nameSpan);
-            li.appendChild(actions);
-            li.appendChild(playCount);
-            li.appendChild(reactionBox);
-            li.appendChild(reactionOutput);
-
+            li.append(nameSpan, actions, playCount, reactionBox, reactionOutput);
             list.appendChild(li);
         });
     }
 
-    search.addEventListener("input", (e) => renderSongs(e.target.value));
-
-    // Auto play next song
     audio.addEventListener("ended", () => {
-        currentIndex++;
-        if (currentIndex < songs.length) {
-            audio.src = songs[currentIndex].path;
-            audio.play();
+        if (currentSongIndex >= 0 && currentSongIndex + 1 < songs.length) {
+            playSong(currentSongIndex + 1);
+        } else {
+            showMessage("End of the music library.");
         }
     });
+
+    audio.addEventListener("error", () => {
+        if (audio.currentSrc) showMessage("Audio file could not be loaded. Check your connection or the file.");
+    });
+
+    search.addEventListener("input", event => renderSongs(event.target.value));
+
+    const API_URL = "https://br-tiny-star-b4m5sz0z-api.compute.c-6.us-east-2.aws.neon.tech/api/v1/songs?page=1&limit=100";
+
+    function loadLocalCatalog() {
+        return fetch("songs.json").then(response => {
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            return response.json();
+        }).then(files => {
+            if (!Array.isArray(files)) throw new Error("Local catalog must be an array");
+            return files;
+        });
+    }
+
+    function localSong(file) {
+        return {
+            file,
+            name: file.replace(/\.mp3$/i, ""),
+            path: "mshub/" + encodeURIComponent(file).replace(/%2F/gi, "/")
+        };
+    }
+
+    fetch(API_URL)
+        .then(response => {
+            if (!response.ok) throw new Error("Catalog API HTTP " + response.status);
+            return response.json();
+        })
+        .then(payload => {
+            if (!payload || !Array.isArray(payload.data)) {
+                throw new Error("Invalid catalog API response");
+            }
+
+            return loadLocalCatalog().then(files => {
+                const localByTitle = new Map(
+                    files.map(file => [
+                        file.replace(/\.mp3$/i, "").trim().toLocaleLowerCase(),
+                        file
+                    ])
+                );
+
+                const remoteSongs = payload.data.map(record => {
+                    if (!record || typeof record.title !== "string") return null;
+
+                    const file = localByTitle.get(record.title.trim().toLocaleLowerCase());
+                    if (!file) return null;
+
+                    return {
+                        ...localSong(file),
+                        name: record.title,
+                        artist: record.artist || ""
+                    };
+                }).filter(Boolean);
+
+                if (!remoteSongs.length) {
+                    throw new Error("No API tracks match local audio files");
+                }
+
+                songs = remoteSongs;
+                console.info("MusicHub catalog loaded from Neon:", songs.length);
+                renderSongs(search.value);
+            });
+        })
+        .catch(error => {
+            console.warn("Neon catalog unavailable; using local catalog:", error);
+
+            loadLocalCatalog()
+                .then(files => {
+                    songs = files.map(localSong);
+                    console.info("MusicHub local catalog loaded:", songs.length);
+                    renderSongs(search.value);
+                })
+                .catch(localError => {
+                    console.error("Could not load either catalog:", localError);
+                    list.replaceChildren();
+                    const item = document.createElement("li");
+                    item.textContent = "Music library could not be loaded. Reload the page and try again.";
+                    list.appendChild(item);
+                    showMessage("Unable to load the music catalog.");
+                });
+        });
 });

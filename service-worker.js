@@ -1,76 +1,76 @@
-const CACHE_NAME = "musichub-v1";
-const ASSETS_TO_CACHE = [
-    "/",
-    "/index.html",
-    "/style.css",
-    "/app.js",
-    "/manifest.json",
-    "/icons/logo.png",
-    "/icons/background.jpg",
-    "/icons/icon-192.png",
-    "/icons/icon-512.png"
+const CACHE_NAME = "musichub-v2";
+const APP_SHELL = [
+  "./",
+  "index.html",
+  "style.css",
+  "app.js",
+  "manifest.json",
+  "songs.json",
+  "icons/logo.png",
+  "icons/005.jpg"
 ];
 
-// Dynamically cache all songs in mshub folder
-const SONGS = [
-    // List your songs here manually or generate via script
-    "mshub/song1.mp3",
-    "mshub/song2.mp3",
-    "mshub/song3.mp3"
-];
+function scopedUrl(path) {
+  return new URL(path, self.registration.scope).href;
+}
 
-// Merge static assets + songs
-const FILES_TO_CACHE = ASSETS_TO_CACHE.concat(SONGS);
-
-// Install event — cache essential files
 self.addEventListener("install", (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log("Caching assets for offline use...");
-                return cache.addAll(FILES_TO_CACHE);
-            })
-            .then(() => self.skipWaiting())
-    );
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL.map(scopedUrl)))
+      .then(() => self.skipWaiting())
+  );
 });
 
-// Activate event — clean old caches
 self.addEventListener("activate", (event) => {
-    event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys.map((key) => {
-                    if (key !== CACHE_NAME) {
-                        console.log("Deleting old cache:", key);
-                        return caches.delete(key);
-                    }
-                })
-            );
-        })
-    );
-    self.clients.claim();
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key.startsWith("musichub-") && key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
 
-// Fetch event — serve cached content first
 self.addEventListener("fetch", (event) => {
-    event.respondWith(
-        caches.match(event.request)
-            .then((cached) => {
-                if (cached) return cached;
-                return fetch(event.request)
-                    .then((response) => {
-                        // Cache dynamically fetched files
-                        return caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request.url, response.clone());
-                            return response;
-                        });
-                    })
-                    .catch(() => {
-                        // Optional fallback for offline (could serve default image)
-                        if (event.request.destination === "image") {
-                            return caches.match("/icons/logo.png");
-                        }
-                    });
-            })
-    );
+  const request = event.request;
+
+  if (request.method !== "GET" || request.headers.has("range")) {
+    return;
+  }
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+
+      return fetch(request).then((response) => {
+        if (
+          response.ok &&
+          response.status === 200 &&
+          response.type === "basic"
+        ) {
+          const requestUrl = new URL(request.url);
+          const scopeUrl = new URL(self.registration.scope);
+
+          if (requestUrl.pathname.startsWith(scopeUrl.pathname)) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+        }
+        return response;
+      }).catch(() => {
+        if (request.mode === "navigate") {
+          return caches.match(scopedUrl("index.html"));
+        }
+        throw new Error("Resource unavailable offline: " + request.url);
+      });
+    })
+  );
 });

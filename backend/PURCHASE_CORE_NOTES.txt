@@ -1,0 +1,3 @@
+002_purchase_core.sql: user auth mapping, idempotency, download entitlements
+purchases.js: pending purchase creation and verified-payment fulfilment
+IMPORTANT: migration is not applied; Daraja callbacks and routes are not connected yet.

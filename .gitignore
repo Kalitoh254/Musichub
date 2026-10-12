@@ -1,0 +1,11 @@
+.neon
+.env.local
+node_modules/
+.env
+.env.*
+!.env.example
+backups/
+*.dump
+*.db
+*.sqlite
+*.sqlite3
