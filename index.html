@@ -18,23 +18,10 @@
 <script>
 window.musichubEnter = function (event) {
   if (event) event.preventDefault();
-  const modal = document.getElementById("mh-account-modal");
-  if (modal) {
-    modal.hidden = false;
-    const status = document.getElementById("mh-message");
-    if (status) status.textContent = "Opening your MusicHub account...";
-    document.dispatchEvent(new CustomEvent("musichub:enter"));
-    return;
-  }
-  let status = document.getElementById("mh-startup-fallback");
-  if (!status) {
-    status = document.createElement("p");
-    status.id = "mh-startup-fallback";
-    status.setAttribute("role", "alert");
-    status.style.cssText = "margin:16px auto;padding:12px;max-width:90%;color:#fff;background:#713b24;border-radius:8px";
-    document.getElementById("closeSplash").insertAdjacentElement("afterend", status);
-  }
-  status.textContent = "MusicHub account interface did not initialize. Reload the page; if this message returns, the account module is failing to load.";
+  const splash = document.getElementById("splashScreen");
+  const main = document.getElementById("mainContent");
+  if (splash) splash.style.display = "none";
+  if (main) main.style.display = "block";
 };
 </script>
 

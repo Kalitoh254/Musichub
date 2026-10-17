@@ -5,7 +5,7 @@ const button = document.createElement('button');
 button.id = 'mh-account-open';
 button.textContent = 'Profile & Settings';
 button.setAttribute('aria-label', 'Open MusicHub profile and settings');
-button.hidden = true;
+button.hidden = false;
 document.body.append(button);
 
 const modal = document.createElement('section');
