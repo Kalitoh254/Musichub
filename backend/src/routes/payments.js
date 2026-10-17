@@ -181,14 +181,10 @@ router.post('/daraja/callback', async (req, res) => {
         checkoutRequestId: callback.checkoutRequestId
       });
       if (verification.resultCode === '0') {
-        const result = await fulfillVerifiedPayment(pool, {
-          merchantReference: tx.merchant_reference,
-          providerReference: callback.mpesaReceiptNumber,
-          amountKes: callback.amountKes,
-          resultCode: 0
-        });
-        console.info('Daraja payment reconciliation result:', result);
-        return res.status(200).json({ ResultCode: 0, ResultDesc: 'Received' });
+        console.warn(
+          'Daraja reports successful checkout, but receipt-level verification is not available; entitlement withheld:',
+          tx.id
+        );
       }
     }
 

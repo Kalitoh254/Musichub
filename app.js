@@ -51,11 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
         status.textContent = message;
     }
 
-    closeSplash.addEventListener("click", () => {
-        splash.style.display = "none";
-        main.style.display = "block";
-    });
-
     homeIcon.addEventListener("click", () => {
         splash.style.display = "flex";
         main.style.display = "none";
@@ -113,6 +108,18 @@ document.addEventListener("DOMContentLoaded", () => {
             nameSpan.className = "song-name";
             nameSpan.textContent = song.name;
 
+            const priceSpan = document.createElement("span");
+            priceSpan.className = "song-price";
+            const price = Number(song.priceKes);
+            priceSpan.textContent =
+                song.priceKes !== null &&
+                song.priceKes !== undefined &&
+                song.priceKes !== "" &&
+                Number.isFinite(price) &&
+                price >= 0
+                    ? "KES " + price.toFixed(2)
+                    : "Price unavailable";
+
             const actions = document.createElement("span");
             actions.className = "song-actions";
 
@@ -167,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 reactionBox.appendChild(button);
             });
 
-            li.append(nameSpan, actions, playCount, reactionBox, reactionOutput);
+            li.append(nameSpan, priceSpan, actions, playCount, reactionBox, reactionOutput);
             list.appendChild(li);
         });
     }
@@ -186,7 +193,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     search.addEventListener("input", event => renderSongs(event.target.value));
 
-    const API_URL = "https://br-tiny-star-b4m5sz0z-api.compute.c-6.us-east-2.aws.neon.tech/api/v1/songs?page=1&limit=100";
+    const API_URL = "/api/v1/songs?page=1&limit=100";
+    const PRICE_CACHE_KEY = "musichub.catalog.prices.v1";
+
+    function titleKey(value) {
+        return String(value || "").replace(/\.mp3$/i, "").trim().toLocaleLowerCase();
+    }
+
+    function readCachedPrices() {
+        try {
+            const prices = JSON.parse(localStorage.getItem(PRICE_CACHE_KEY) || "{}");
+            return prices && typeof prices === "object" ? prices : {};
+        } catch {
+            return {};
+        }
+    }
+
+    function cachePrices(records) {
+        try {
+            const prices = readCachedPrices();
+            for (const record of records) {
+                if (record && typeof record.title === "string" &&
+                    record.download_price_kes != null) {
+                    prices[titleKey(record.title)] = record.download_price_kes;
+                }
+            }
+            localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(prices));
+        } catch (error) {
+            console.warn("Could not cache catalog prices:", error);
+        }
+    }
 
     function loadLocalCatalog() {
         return fetch("songs.json").then(response => {
@@ -216,6 +252,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error("Invalid catalog API response");
             }
 
+            cachePrices(payload.data);
+
             return loadLocalCatalog().then(files => {
                 const localByTitle = new Map(
                     files.map(file => [
@@ -233,7 +271,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     return {
                         ...localSong(file),
                         name: record.title,
-                        artist: record.artist || ""
+                        artist: record.artist || "",
+                        priceKes: record.download_price_kes
                     };
                 }).filter(Boolean);
 
@@ -251,7 +290,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             loadLocalCatalog()
                 .then(files => {
-                    songs = files.map(localSong);
+                    const cachedPrices = readCachedPrices();
+                    songs = files.map(file => ({
+                        ...localSong(file),
+                        priceKes: cachedPrices[titleKey(file)]
+                    }));
                     console.info("MusicHub local catalog loaded:", songs.length);
                     renderSongs(search.value);
                 })

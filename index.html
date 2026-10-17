@@ -14,7 +14,32 @@
     <img src="icons/logo.png" alt="MusicHub Logo" class="splash-logo">
     <h1>Welcome to MusicHub</h1>
     <p>Powered by MegaFlow Music Inc.</p>
-    <button id="closeSplash">Enter MusicHub</button>
+    <button id="closeSplash" type="button" onclick="window.musichubEnter(event)">Enter MusicHub</button>
+<script>
+window.musichubEnter = function (event) {
+  if (event) event.preventDefault();
+  const modal = document.getElementById("mh-account-modal");
+  if (modal) {
+    modal.hidden = false;
+    const status = document.getElementById("mh-message");
+    if (status) status.textContent = "Opening your MusicHub account...";
+    document.dispatchEvent(new CustomEvent("musichub:enter"));
+    return;
+  }
+  let status = document.getElementById("mh-startup-fallback");
+  if (!status) {
+    status = document.createElement("p");
+    status.id = "mh-startup-fallback";
+    status.setAttribute("role", "alert");
+    status.style.cssText = "margin:16px auto;padding:12px;max-width:90%;color:#fff;background:#713b24;border-radius:8px";
+    document.getElementById("closeSplash").insertAdjacentElement("afterend", status);
+  }
+  status.textContent = "MusicHub account interface did not initialize. Reload the page; if this message returns, the account module is failing to load.";
+};
+</script>
+
+
+
 </div>
 
 <!-- Main Content -->
@@ -57,5 +82,6 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
+<script type="module" src="auth.js"></script>
 </body>
 </html>

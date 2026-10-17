@@ -6,9 +6,10 @@ const express = require('express');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
+const path = require('path');
 
 const app = express();
-const host = process.env.HOST || '127.0.0.1';
+const host = process.env.HOST || '0.0.0.0';
 const port = Number(process.env.PORT || 5000);
 
 if (!process.env.DATABASE_URL) {
@@ -41,6 +42,23 @@ if (process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', 1);
 }
 
+const allowedOrigins = new Set([
+  "http://127.0.0.1:8000",
+  "http://localhost:8000"
+]);
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(origin && allowedOrigins.has(origin) ? 204 : 403);
+  }
+  next();
+});
 app.use(helmet());
 app.use(express.json({ limit: '16kb', strict: true }));
 app.use(rateLimit({
@@ -102,6 +120,31 @@ app.get('/api/v1/songs', async (req, res, next) => {
     next(error);
   }
 });
+
+
+// Serve only approved frontend files; never expose backend source or repository files.
+const projectRoot = path.resolve(__dirname, '../..');
+const frontendFiles = new Map([
+  ['/', 'index.html'],
+  ['/index.html', 'index.html'],
+  ['/app.js', 'app.js'],
+  ['/auth.js', 'auth.js'],
+  ['/style.css', 'style.css'],
+  ['/manifest.json', 'manifest.json'],
+  ['/songs.json', 'songs.json'],
+  ['/service-worker.js', 'service-worker.js']
+]);
+app.get([...frontendFiles.keys()], (req, res, next) => {
+  res.sendFile(path.join(projectRoot, frontendFiles.get(req.path)), error => {
+    if (error) next(error);
+  });
+});
+app.use('/icons', express.static(path.join(projectRoot, 'icons'), {
+  dotfiles: 'deny', index: false
+}));
+app.use('/mshub', express.static(path.join(projectRoot, 'mshub'), {
+  dotfiles: 'deny', index: false
+}));
 
 app.use((error, _req, res, _next) => {
   console.error('Request failed:', error.message);

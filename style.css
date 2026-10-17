@@ -185,3 +185,38 @@ button {
 button:active {
     transform: scale(0.95);
 }
+
+
+/* Database-driven song download price */
+.song-price {
+    display: inline-block;
+    align-self: flex-start;
+    margin: 4px 0 8px;
+    padding: 6px 11px;
+    border: 1px solid burlywood;
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.55);
+    color: burlywood;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+/* MusicHub account authentication */
+#mh-account-open{position:fixed;right:16px;bottom:18px;z-index:9998;padding:12px 18px;border:0;border-radius:24px;background:#c58b42;color:#17100a;font-weight:700;box-shadow:0 4px 18px #0006}
+#mh-account-modal[hidden],#mh-account-modal [hidden]{display:none!important}
+#mh-account-modal{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:#000b;overflow:auto}
+.mh-account-card{position:relative;width:min(100%,420px);max-height:90vh;overflow:auto;padding:26px;border:1px solid #9b5428;border-radius:16px;background:#201711;color:#f3e8d8;box-shadow:0 18px 60px #0009}
+.mh-account-card h2,.mh-account-card h3{margin-top:0;color:#ffb52e}
+.mh-account-card label{display:block;margin:14px 0;font-size:.95rem}
+.mh-account-card input{display:block;box-sizing:border-box;width:100%;margin-top:6px;padding:12px;border:1px solid #70513b;border-radius:8px;background:#080706;color:#fff}
+.mh-account-card button{padding:11px 15px;border:0;border-radius:8px;background:#ffb52e;color:#17100a;font-weight:700;cursor:pointer}
+.mh-account-card button:disabled{opacity:.6}
+.mh-account-card .mh-secondary{margin:12px 0;background:transparent;color:#ffcf75;border:1px solid #9b5428}
+.mh-account-card .mh-close{position:absolute;top:10px;right:12px;padding:4px 10px;background:transparent;color:#f3e8d8;font-size:1.6rem}
+
+
+/* MusicHub onboarding click and modal layering repair */
+#splashScreen{z-index:9997}
+#closeSplash{position:relative;z-index:9998;pointer-events:auto;cursor:pointer}
+#mh-account-modal{z-index:9999}

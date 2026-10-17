@@ -3,15 +3,18 @@
 const { createRemoteJWKSet, jwtVerify } = require('jose');
 
 const baseUrl = process.env.NEON_AUTH_BASE_URL;
-if (!baseUrl) {
-  console.warn('NEON_AUTH_BASE_URL is not configured; authenticated routes will reject requests.');
+const jwksUrl = process.env.NEON_AUTH_JWKS_URL ||
+  (baseUrl ? `${baseUrl.replace(/\/+$/, '')}/.well-known/jwks.json` : null);
+
+if (!jwksUrl) {
+  console.warn('Neon Auth JWKS URL is not configured; authenticated routes will reject requests.');
 }
 
-const jwks = baseUrl
-  ? createRemoteJWKSet(
-      new URL(`${baseUrl.replace(/\/+$/, '')}/.well-known/jwks.json`)
-    )
-  : null;
+if (jwksUrl && new URL(jwksUrl).protocol !== 'https:') {
+  throw new Error('Neon Auth JWKS URL must use HTTPS.');
+}
+
+const jwks = jwksUrl ? createRemoteJWKSet(new URL(jwksUrl)) : null;
 
 async function requireAuth(req, res, next) {
   try {

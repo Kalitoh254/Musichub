@@ -1,4 +1,4 @@
-const CACHE_NAME = "musichub-v2";
+const CACHE_NAME = "musichub-v4";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -43,6 +43,27 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const networkFirst = /\/(index\.html|app\.js|style\.css|songs\.json|manifest\.json|service-worker\.js)$/.test(url.pathname);
+
+  if (networkFirst) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok && response.status === 200 && response.type === "basic") {
+          caches.open(CACHE_NAME)
+            .then((cache) => cache.put(request, response.clone()));
+        }
+        return response;
+      }).catch(() => caches.match(request).then((cached) => {
+        if (cached) return cached;
+        if (request.mode === "navigate") {
+          return caches.match(scopedUrl("index.html"));
+        }
+        throw new Error("Resource unavailable offline: " + request.url);
+      }))
+    );
     return;
   }
 
